@@ -1,27 +1,60 @@
 # enchannel
 
-Enchannel is a light spec for communications between a frontend, like the [notebook](https://github.com/jupyter/notebook) or [jupyter-sidecar](https://github.com/nteract/jupyter-sidecar), and a backend kernel (the runtime, like Python, Julia, or R).  Enchannel does not specify how the communications are constructed or destructed.
+Enchannel is a lightweight spec for flexible communications between a
+frontend, like the [notebook](https://github.com/jupyter/notebook) or
+[jupyter-sidecar](https://github.com/nteract/jupyter-sidecar), and a backend
+kernel (the runtime, like Python, Julia, or R).  Enchannel does not specify
+the implementation or how the communications are constructed or destructed.
 
 [![enchannel](https://cloud.githubusercontent.com/assets/836375/12282043/b19bb16e-b960-11e5-8661-ce2111ec0417.png)](https://cloud.githubusercontent.com/assets/836375/12282043/b19bb16e-b960-11e5-8661-ce2111ec0417.png)
 
 ## Motivation
 
-The core functionality of the notebook is to send messages from a frontend to a backend, and from a backend to a frontend ([or many frontends](https://github.com/nteract/jupyter-sidecar)). In the case of the Jupyter/IPython notebook, it communicates over websockets (which in turn reach out to ØMQ on the backend).
+### Background
+The core functionality of the notebook is to send messages from a frontend to
+a backend, and from a backend to a frontend ([or many
+frontends](https://github.com/nteract/jupyter-sidecar)). In the case of the
+Jupyter/IPython notebook, it communicates over websockets (which in turn reach
+out to ØMQ on the backend).
 
-What if you want to serve the same HTML and Javascript for the notebook application itself while being able to work in a native ØMQ environment? What if websockets are fairly restricted in your working \*ahem\* *corporate* environment and you need to send data via `POST` and receive streaming updates using server-sent events?
+### What if...?
+What if you want to serve the same HTML and Javascript for the notebook
+application itself while being able to work in a native ØMQ environment? What
+if websockets are fairly restricted in your working \*ahem\* *corporate*
+environment and you need to send data via `POST` and receive streaming updates
+using server-sent events?
 
-We'd need a nice clean way to abstract the transport layer. Since [Jupyter is messages all the way down](http://jupyter-client.readthedocs.org/en/latest/messaging.html), one way is to hook up a series of event emitters all with the same interface. That's [definitely do-able](https://github.com/nteract/jupyter-transport-wrapper). Instead, let's rely on Observables: asynchronous data streams, [*from the future*](https://zenparsing.github.io/es-observable/). Observables are the multi-valued promise we've all been waiting for:
+### Solutions
+Well, we'd need a nice, clean way to abstract the transport layer. As [Jupyter
+is messages all the way
+down](http://jupyter-client.readthedocs.org/en/latest/messaging.html), hooking
+up a series of event emitters, all with the same interface, is one
+abstraction. That's [definitely
+do-able](https://github.com/nteract/jupyter-transport-wrapper).
 
+Instead, let's rely on **Observables**: asynchronous data streams, [*from the
+future*](https://zenparsing.github.io/es-observable/). Observables, as
+flexible transport, are the multi-valued promise we've all been waiting for:
+ 
 |                              | Single return value | Mutiple return values                  |
 | ---------------------------- | ------------------- | -------------------------------------- |
-| Pull/Synchronous/Interactive | Object              | Iterables (Array | Set | Map | Object) |
+| Pull/Synchronous/Interactive | Object              | Iterables (Array, Set, Map, Object) |
 | Push/Asynchronous/Reactive   | Promise             | Observable                             |
 
 The enchannel spec uses RxJS's observables implementation.
 
-## Kernel communications
+---
 
-Communications are described by a single object containing [subjects](https://github.com/Reactive-Extensions/RxJS/blob/master/doc/gettingstarted/subjects.md) for each communication channel of that kernel instance.  There will be between 4 and 5 channels:
+## **enchannel** your data
+
+*Promise* delivered when you need it.
+*Observable* by you and others.
+
+### The spec
+Kernel communications are described by a single object containing
+[subjects](https://github.com/Reactive-Extensions/RxJS/blob/master/doc/gettingstarted/subjects.md),
+each corresponding to a communication channel of the kernel instance.  There will
+be between four and five channels:
 
 ```js
 const {
@@ -35,7 +68,8 @@ const {
 
 *[For more information see the Jupyter client docs.](http://jupyter-client.readthedocs.org/en/latest/messaging.html)*
 
-Relying on RxJS's implementation of subjects means the streams can be handled like so:
+Relying on RxJS's implementation of subjects means the streams can be handled
+like so:
 
 ```javascript
 iopub.filter(msg => msg.header.msg_type === 'execute_result')
@@ -43,7 +77,8 @@ iopub.filter(msg => msg.header.msg_type === 'execute_result')
      .subscribe(x => { console.log(`DATA: ${util.inspect(x)}`)})
 ```
 
-On top of that, since these are subjects, we can go ahead and submit messages to the underlying transport:
+As a benefit of subjects, we can go ahead and submit messages to the
+underlying transport:
 
 ```javascript
 var message = {
@@ -66,20 +101,30 @@ var message = {
 shell.next(message); // send the message
 ```
 
-Messages observed from these Subjects are all immutable, not by convention but through a recursive `Object.freeze`.
+Messages observed from these Subjects are all immutable, not by convention but
+through a recursive `Object.freeze`.
 
-Note that [heartbeat](http://jupyter-client.readthedocs.org/en/latest/messaging.html#heartbeat-for-kernels) is not included above, primarily because it's being thought of as something that may end up being deprecated.
+Note that
+[heartbeat](http://jupyter-client.readthedocs.org/en/latest/messaging.html#heartbeat-for-kernels)
+is not included in the spec above primarily because it's an implementation
+by-product and may end up being deprecated based on the chosen development
+approach.
 
-## What's in this repo?
+## What's in this repo? Convenience.
 
-In addition to the spec doc itself (the text above) this repo contains convenience functions for enchannel implementations and consumers.  To use these functions install this package with npm
+In addition to the spec doc itself (the text above) this repo contains
+**convenience functions** for enchannel implementations and consumers. To use
+these functions install this package with npm:
 
     npm install enchannel
 
-The utility functions included are described below
+The utility functions included are described below.
 
 #### isChildMessage
-Checks to see if one message is child to another.  Accepts two arguments, parent and child, both of which are [Jupyter message objects](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format).  To use as a conditional:
+Checks to see if one message is child to another.  Accepts two arguments,
+parent and child, both of which are [Jupyter message
+objects](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format).
+To use as a conditional:
 
 ```js
 const enchannel = require('enchannel');
@@ -88,7 +133,10 @@ if (enchannel.isChildMessage(parent, child)) {
 }
 ```
 
-It will probably make more sense to use it as an observable filter.  In the example below, `parent` is a [Jupyter message object](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format) and `channels.iopub` is an RxJS observable:
+It will probably make more sense to use it as an observable filter.  In the
+example below, `parent` is a [Jupyter message
+object](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format)
+and `channels.iopub` is an RxJS observable:
 
 ```js
 const enchannel = require('enchannel');
@@ -97,13 +145,14 @@ const childMessages = channels.iopub.filter(isChildMessage);
 ```
 
 #### createMessage
-Creates a [Jupyter message object](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format).  Accepts 3 arguments:
+Creates a [Jupyter message object](https://ipython.org/ipython-doc/3/development/messaging.html#general-message-format) that accepts three arguments:
 
- - username, string  
- - session, string,  guid unique to the current session  
- - msg_type: string, type of the message getting sent  
+ - username: string  
+ - session: string, `guid` unique to the current session  
+ - msg_type: string, type of message being sent  
 
-The following is a full example that shows how you'd setup the session and username, and then create and send a shutdown request:
+This full example shows how you'd setup the session and
+username, and then create and send a shutdown request:
 
 ```js
 channels = ...connected using an enchannel backend...
@@ -128,11 +177,11 @@ channels.shell.next(shutdownRequest);
 ```
 
 #### shutdownRequest
-Sends a [shutdown request Jupyter message](https://ipython.org/ipython-doc/3/development/messaging.html#kernel-shutdown) to the kernel and completes the observables.  Accepts 3 arguments:
+Sends a [shutdown request Jupyter message](https://ipython.org/ipython-doc/3/development/messaging.html#kernel-shutdown) to the kernel and completes the observables.  Accepts three arguments:
 
  - channels: object, enchannel channels object
  - username, string  
- - session, string,  guid unique to the current session  
+ - session, string, `guid` unique to the current session  
  - restart: optional boolean, whether the shutdown request is actually a restart request
 
 The following example shows how this method would be used:
@@ -145,14 +194,15 @@ enchannel.shutdownRequest(channels, username, session, restart).then(() => {
 });
 ```
 
-## Development
+## Develop with us
 
-To contribute to the spec or utility functions, clone this repo and install it by running the following from the repo root:
+ To contribute to the spec or convenience functions, clone this repo and
+install it by running the following from the repo root:
 
     npm install
 
-Before contributing any changes to the utility functions, make sure the unit tests pass locally by running:
-
+Before contributing changes to the utility functions, be kind to your peers
+and check if the unit tests pass locally by running: 
     npm test
 
 ## Implementations
