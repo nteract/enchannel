@@ -1,5 +1,7 @@
 # enchannel
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/nteract/enchannel.svg)](https://greenkeeper.io/)
+
 Enchannel is a lightweight spec for flexible communications between a
 frontend, like the [notebook](https://github.com/jupyter/notebook) or
 [jupyter-sidecar](https://github.com/nteract/jupyter-sidecar), and a backend
